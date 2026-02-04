@@ -1,0 +1,8 @@
+# MTGJSON data (muy pesado, no versionar)
+MTGJSON/
+art/
+data/
+SETREF/
+Templates/
+TRASH/
+seteditor/images/
