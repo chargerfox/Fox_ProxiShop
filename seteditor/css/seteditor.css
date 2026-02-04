@@ -1,0 +1,242 @@
+@font-face {
+    font-family: 'Keyrune';
+    src: url('../fonts/Keyrune.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'MPlantin';
+    src: url('../fonts/PlantinMTProRg.TTF') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'MPlantinI';
+    src: url('../fonts/PlantinMTProRgIt.TTF') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'MagicTheGathering';
+    src: url('../fonts/MagicTheGathering.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'ManaFontTTF';
+    src: url('../fonts/mana.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+#set-list li {
+    font-family: 'Keyrune', Arial, sans-serif;
+}
+
+/* ================================
+   RESET BÁSICO
+================================ */
+* {
+    box-sizing: border-box;
+
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #1e1e1e;
+    color: #eaeaea;
+    overflow: hidden;
+}
+
+/* ================================
+   TOP TOOLBAR
+================================ */
+#top-toolbar {
+    height: 46px;
+    background: #2b2b2b;
+    border-bottom: 1px solid #444;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    user-select: none;
+}
+
+#top-toolbar button,
+#top-toolbar select {
+    background: #3a3a3a;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 4px 8px;
+}
+
+#top-toolbar span {
+    opacity: 0.7;
+}
+
+/* ================================
+   MAIN LAYOUT
+================================ */
+#main {
+    height: calc(100vh - 46px);
+    display: grid;
+    grid-template-columns: 
+        200px    /* listas */
+        320px    /* preview1 */
+        auto;   /* preview2 */
+    gap: 6px;
+    padding: 6px;
+    overflow: hidden;
+}
+
+
+/* ================================
+   LEFT COLUMN (SETS + CARDS)
+================================ */
+#left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+}
+
+/* Panels */
+.panel {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.panel h3 {
+    margin: 0;
+    padding: 6px 8px;
+    background: #333;
+    border-bottom: 1px solid #444;
+    font-size: 14px;
+}
+
+/* Lists */
+#set-list,
+#card-list {
+    flex: 1;
+    overflow-y: auto;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#set-list li,
+#card-list li {
+    padding: 4px 8px;
+    cursor: pointer;
+    border-bottom: 1px solid #333;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#set-list li:hover,
+#card-list li:hover {
+    background: #3a3a3a;
+}
+
+#set-list li.active,
+#card-list li.active {
+    background: #505050;
+}
+
+/* Alturas relativas */
+#sets-panel {
+    flex: 0 0 35%;
+}
+
+#cards-panel {
+    flex: 1 1 auto;
+}
+
+/* ================================
+   PREVIEW 1
+================================ */
+
+#preview1-panel {
+    width: 320px;
+    height: 100%;
+	
+}
+
+#preview1-img {
+	width: 320px;
+    object-fit: contain;
+}
+
+/* ================================
+   PREVIEW 2
+================================ */
+#preview2-panel {
+    position: relative;
+	background: #555;
+}
+
+/* Si el template inserta imágenes */
+#preview2-panel img {
+/* Todo dinamico desde js de cada template */
+}
+
+/* ================================
+   Filter bar
+================================ */
+#filters-bar input,
+#filters-bar select {
+    width: 20px;       /* ajusta según lo que necesites */
+    height: 24px;
+    font-size: 12px;   /* más pequeño que el original */
+    padding: 2px 4px;
+    box-sizing: border-box;
+    display: inline-block;
+}
+
+#filters-bar label {
+    margin-right: 4px;
+    font-size: 12px;
+}
+
+#filters-bar #dynamic-toolbar {
+    display: flex;
+    gap: 6px;          /* espacio entre inputs */
+    align-items: center;
+}
+
+
+/* ================================
+   SCROLLBARS
+================================ */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1c1c1c;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #555;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+.ms {
+    font-size: 1em;
+    vertical-align: -0.1em;
+    margin: 0 1px;
+}
