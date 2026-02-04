@@ -1,0 +1,436 @@
+#include "symbol_rules.jsx";
+#include "es-class.js";
+#include "helpers.jsx";
+#include "format_text.jsx";
+
+/* Helper functions */
+
+function scale_text_right_overlap(layer, reference_layer) {
+    /**
+     * Scales a text layer down (in 0.2 pt increments) until its right bound has a 24 px clearance from a reference
+     * layer's left bound.
+     */
+
+    var step_size = new UnitValue(0.2, "pt");
+    var reference_left_bound = reference_layer.bounds[0].as("px");
+    var layer_left_bound = layer.bounds[0].as("px");
+    var layer_right_bound = layer.bounds[2].as("px");
+    // guard against the reference's left bound being left of the layer's left bound or the reference being malformed otherwise
+    if (reference_left_bound < layer_left_bound || reference_left_bound === null || reference_left_bound === undefined) {
+        return;
+    }
+    var layer_font_size = layer.textItem.size;  // returns unit value
+    while (layer_right_bound > reference_left_bound - 24) {  // minimum 24 px gap
+        layer_font_size = layer_font_size - step_size;
+        layer.textItem.size = layer_font_size;
+        layer_right_bound = layer.bounds[2].as("px");
+    }
+}
+
+function scale_text_to_fit_reference(layer, reference_layer, forced_leading) {
+    /**
+    * Resize a given text layer's contents (in 0.25 pt increments) until it fits inside a specified reference layer.
+    * If forced_leading is provided, it will be respected.
+    * Otherwise leading will follow font size (legacy behaviour).
+    */
+
+    var starting_font_size = layer.textItem.size;
+    var step_size = new UnitValue(0.25, "pt");
+
+    // Reduce the reference height by 64 pixels to avoid text landing on the top/bottom bevels
+    var reference_height = compute_layer_dimensions(reference_layer).height - 64;
+
+    var font_size = starting_font_size;
+    var scaled = false;
+
+    var layer_height = compute_text_layer_dimensions(layer).height;
+
+    // -------------------------------------------------
+    // Detect if forced leading is valid
+    // -------------------------------------------------
+    var use_forced_leading =
+        forced_leading !== null &&
+        forced_leading !== "" &&
+        !isNaN(Number(forced_leading)) &&
+        Number(forced_leading) > 0;
+
+    var fixed_leading = use_forced_leading
+        ? new UnitValue(Number(forced_leading), "pt")
+        : null;
+
+    // -------------------------------------------------
+    // Scale loop
+    // -------------------------------------------------
+    while (reference_height < layer_height) {
+        scaled = true;
+
+        font_size = font_size - step_size;
+        layer.textItem.size = font_size;
+
+        if (use_forced_leading) {
+            // 👉 Respeta leading forzado
+            layer.textItem.leading = fixed_leading;
+        } else {
+            // 👉 Comportamiento original
+            layer.textItem.leading = font_size;
+        }
+
+        layer_height = compute_text_layer_dimensions(layer).height;
+    }
+
+    return scaled;
+}
+
+
+// TODO: multiple layers, each with their own references, that scale down together until they all fit within their references
+
+function vertically_align_text(layer, reference_layer) {
+    /**
+     * Rasterises a given text layer and centres it vertically with respect to the bounding box of a reference layer.
+     */
+
+    var layer_copy = layer.duplicate(activeDocument, ElementPlacement.INSIDE);
+    layer_copy.rasterize(RasterizeType.TEXTCONTENTS);
+    select_layer_pixels(reference_layer);
+    app.activeDocument.activeLayer = layer_copy;
+    align_vertical(layer_copy);
+    clear_selection();
+    var layer_dimensions = compute_text_layer_bounds(layer);
+    var layer_copy_dimensions = compute_text_layer_bounds(layer_copy);
+    layer.translate(0, layer_copy_dimensions[1].as("px") - layer_dimensions[1].as("px"));
+    layer_copy.remove();
+}
+
+function vertically_nudge_creature_text(layer, reference_layer, top_reference_layer) {
+    /**
+     * Vertically nudge a creature's text layer if it overlaps with the power/toughness box, determined by the given reference layers.
+     */
+
+    // if the layer needs to be nudged
+    if (layer.bounds[2].as("px") >= reference_layer.bounds[0].as("px")) {
+        select_layer_pixels(reference_layer);
+        var rasterised_copy = layer.duplicate();
+        rasterised_copy.rasterize(RasterizeType.ENTIRELAYER);
+        app.activeDocument.activeLayer = rasterised_copy;
+
+        // the copied bit of the text layer within the PT box will be inserted into a layer with this name
+        var extra_bit_layer_name = "Extra Bit";
+
+        // copy the contents of the active layer within the current selection to a new layer
+        var idCpTL = charIDToTypeID("CpTL");
+        executeAction(idCpTL, undefined, DialogModes.NO);
+        idsetd = charIDToTypeID("setd");
+        var desc5 = new ActionDescriptor();
+        idnull = charIDToTypeID("null");
+        var ref4 = new ActionReference();
+        idLyr = charIDToTypeID("Lyr ");
+        idOrdn = charIDToTypeID("Ordn");
+        idTrgt = charIDToTypeID("Trgt");
+        ref4.putEnumerated(idLyr, idOrdn, idTrgt);
+        desc5.putReference(idnull, ref4);
+        idT = charIDToTypeID("T   ");
+        var desc6 = new ActionDescriptor();
+        var idNm = charIDToTypeID("Nm  ");
+        desc6.putString(idNm, extra_bit_layer_name);
+        idLyr = charIDToTypeID("Lyr ");
+        desc5.putObject(idT, idLyr, desc6);
+        executeAction(idsetd, desc5, DialogModes.NO);
+
+        // determine how much the rules text overlaps the power/toughness by
+        var extra_bit_layer = layer.parent.layers.getByName(extra_bit_layer_name);
+        var delta = top_reference_layer.bounds[3].as("px") - extra_bit_layer.bounds[3].as("px");
+
+        if (delta < 0) {
+            layer.translate(0, new UnitValue(delta, "px"));
+        }
+
+        rasterised_copy.remove();
+        extra_bit_layer.remove();
+        clear_selection();
+    }
+}
+
+/* Class definitions */
+
+var TextField = Class({
+    /*
+    A generic TextField, which allows you to set a text layer's contents and text colour.
+    */
+
+    constructor: function (layer, text_contents, text_colour) {
+        this.layer = layer;
+        this.text_contents = "";
+        if (text_contents !== null && text_contents !== undefined) {
+            this.text_contents = text_contents.replace(/\n/g, "\r");
+        }
+        this.text_colour = text_colour;
+    },
+    execute: function () {
+        this.layer.visible = true;
+        this.layer.textItem.contents = this.text_contents;
+        this.layer.textItem.color = this.text_colour;
+    }
+});
+
+var ScaledTextField = Class({
+    /**
+     * A TextField which automatically scales down its font size (in 0.2 pt increments) until its
+     * right bound no longer overlaps with a specified reference layer's left bound.
+     */
+
+    extends_: TextField,
+    constructor: function (layer, text_contents, text_colour, reference_layer) {
+        this.super(layer, text_contents, text_colour);
+        this.reference_layer = reference_layer;
+    },
+    execute: function () {
+        this.super();
+
+        // scale down the text layer until it doesn't overlap with the reference layer (e.g. card name overlapping with mana cost)
+        scale_text_right_overlap(this.layer, this.reference_layer);
+    }
+});
+
+var ExpansionSymbolField = Class({
+    extends_: TextField,
+
+    constructor: function (layer, text_contents, rarity, layout) {
+        this.super(layer, text_contents, rgb_black());
+
+        this.rarity = rarity;
+        this.layout = layout;   // ✅ inyectado desde el template
+
+        if (rarity === rarity_bonus || rarity === rarity_special) {
+            this.rarity = rarity_mythic;
+        }
+    },
+
+    execute: function () {
+        this.super();
+
+        var stroke_weight = 6;
+        app.activeDocument.activeLayer = this.layer;
+
+        if (this.rarity === rarity_common) {
+            apply_stroke(stroke_weight, rgb_white());
+        } else {
+            var mask_layer = this.layer.parent.layers.getByName(this.rarity);
+            mask_layer.visible = true;
+            apply_stroke(stroke_weight, rgb_black());
+        }
+
+        // ============================
+        // OBTENER RULE POR SET
+        // ============================
+
+        var rule;
+
+        if (
+            this.layout &&
+            this.layout.scryfall &&
+            this.layout.scryfall.set
+        ) {
+            var key = this.layout.scryfall.set.toLowerCase();
+
+            if (symbol_rules[key] !== undefined) {
+                rule = symbol_rules[key];
+            } else {
+                alert("⚠ No hay symbol_rules para set: " + key);
+            }
+        } else {
+            alert("⚠ layout.scryfall.set no disponible");
+        }
+
+        // ============================
+        // APLICAR POSICION Y ESCALA
+        // ============================
+
+        // ============================
+		// APLICAR POSICION Y ESCALA
+		// ============================
+
+		if (rule !== undefined) {
+			var bounds = this.layer.bounds;
+
+			var currentX = bounds[0].as("px");
+			var currentY = bounds[1].as("px");
+			var currentWidth  = bounds[2].as("px") - bounds[0].as("px");
+			var currentHeight = bounds[3].as("px") - bounds[1].as("px");
+
+			// ============================
+			// SCALE FIRST
+			// ============================
+
+			var widthFactor  = (rule.width  / currentWidth)  * 100;
+			var heightFactor = (rule.height / currentHeight) * 100;
+
+			this.layer.resize(
+				widthFactor,
+				heightFactor,
+				AnchorPosition.TOPLEFT
+			);
+
+			// ============================
+			// RECALC BOUNDS AFTER SCALE
+			// ============================
+
+			var b2 = this.layer.bounds;
+			var newX = b2[0].as("px");
+			var newY = b2[1].as("px");
+
+			// ============================
+			// MOVE TO FINAL POSITION
+			// ============================
+
+			this.layer.translate(
+				rule.x - newX,
+				rule.y - newY
+			);
+		}
+    }
+});
+
+
+
+var BasicFormattedTextField = Class({
+    /**
+     * A TextField where the contents contain some number of symbols which should be replaced with glyphs from the NDPMTG font.
+     * For example, if the text contents for an instance of this class is "{2}{R}", formatting this text with NDPMTG would correctly
+     * show the mana cost 2R with text contents "o2or" with characters being appropriately coloured.
+     * Doesn't support flavour text or centred text. For use with fields like mana costs and planeswalker abilities.
+     */
+
+    extends_: TextField,
+    execute: function () {
+        this.super();
+
+        // format text function call
+        app.activeDocument.activeLayer = this.layer;
+        var italic_text = generate_italics(this.text_contents);
+        format_text(this.text_contents, italic_text, -1, false);
+    }
+});
+
+var FormattedTextField = Class({
+    /**
+     * A TextField where the contents contain some number of symbols which should be replaced with glyphs from the NDPMTG font.
+     * For example, if the text contents for an instance of this class is "{2}{R}", formatting this text with NDPMTG would correctly
+     * show the mana cost 2R with text contents "o2or" with characters being appropriately coloured.
+     * The big boy version which supports centred text and flavour text. For use with card rules text.
+     */
+
+    extends_: TextField,
+    constructor: function (layer, text_contents, text_colour, flavour_text, is_centred) {
+        this.super(layer, text_contents, text_colour);
+        this.flavour_text = "";
+        if (flavour_text !== null && flavour_text !== undefined) {
+            this.flavour_text = flavour_text.replace(/\n/g, "\r");
+        }
+        this.is_centred = is_centred;
+    },
+    execute: function () {
+        this.super();
+
+        // generate italic text arrays from things in (parentheses), ability words, and the given flavour text
+        var italic_text = generate_italics(this.text_contents);
+        var flavour_index = -1;
+
+        if (this.flavour_text.length > 1) {
+            // remove things between asterisks from flavour text if necessary
+            var flavour_text_split = this.flavour_text.split("*");
+            if (flavour_text_split.length > 1) {
+                // asterisks present in flavour text
+                for (var i = 0; i < flavour_text_split.length; i += 2) {
+                    // add the parts of the flavour text not between asterisks to italic_text
+                    if (flavour_text_split[i] !== "") italic_text.push(flavour_text_split[i]);
+                }
+                // reassemble flavourText without asterisks
+                this.flavour_text = flavour_text_split.join("");
+            } else {
+                // if no asterisks in flavour text, push the whole flavour text string instead
+                italic_text.push(this.flavour_text);
+            }
+            flavour_index = this.text_contents.length;
+        }
+
+        app.activeDocument.activeLayer = this.layer;
+        format_text(this.text_contents + "\r" + this.flavour_text, italic_text, flavour_index, this.is_centred);
+        if (this.is_centred) {
+            this.layer.textItem.justification = Justification.CENTER;
+        }
+    }
+})
+
+var FormattedTextArea = Class({
+    extends_: FormattedTextField,
+
+    constructor: function (
+        layer,
+        text_contents,
+        text_colour,
+        flavour_text,
+        is_centred,
+        reference_layer,
+        forced_font_size,   // 👈 NUEVO (puede ser null)
+		forced_leading    // 👈 nuevo
+    ) {
+        this.super(layer, text_contents, text_colour, flavour_text, is_centred);
+        this.reference_layer = reference_layer;
+        this.forced_font_size = forced_font_size;
+		this.forced_leading = forced_leading;
+    },
+
+    execute: function () {
+        this.super();
+
+        if (this.text_contents !== "" || this.flavour_text !== "") {
+
+            // 👉 Si viene font size forzado, aplicarlo primero
+            var fs_value = Number(this.forced_font_size);
+			var lg_value = Number(this.forced_leading);
+			
+			if (!isNaN(fs_value) && fs_value > 0) {
+				var fs = new UnitValue(fs_value, "pt");
+				this.layer.textItem.size = fs;
+				
+			}
+			if (!isNaN(lg_value) && lg_value > 0) {
+				var lg = new UnitValue(lg_value, "pt");
+				this.layer.textItem.leading = lg;
+			}
+
+            // resize the text until it fits into the reference layer
+            scale_text_to_fit_reference(
+				this.layer,
+				this.reference_layer,
+				this.forced_leading
+			);
+
+
+            // centre vertically
+            vertically_align_text(this.layer, this.reference_layer);
+        }
+    }
+});
+
+
+var CreatureFormattedTextArea = Class({
+    /**
+     * A FormattedTextArea which also respects the bounds of creature card's power/toughness boxes. If the rasterised and centered text layer
+     * overlaps with another specified reference layer (which should represent the bounds of the power/toughness box), the layer will be shifted
+     * vertically by just enough to ensure that it doesn't overlap.
+     */
+
+    extends_: FormattedTextArea,
+    constructor: function (layer, text_contents, text_colour, flavour_text, is_centred, reference_layer, pt_reference_layer, pt_top_reference_layer) {
+        this.super(layer, text_contents, text_colour, flavour_text, is_centred, reference_layer);
+        this.pt_reference_layer = pt_reference_layer;
+        this.pt_top_reference_layer = pt_top_reference_layer;
+    },
+    execute: function () {
+        this.super();
+
+        // shift vertically if the text overlaps the PT box
+        vertically_nudge_creature_text(this.layer, this.pt_reference_layer, this.pt_top_reference_layer);
+    }
+})

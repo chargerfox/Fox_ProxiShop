@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Set Editor MTG</title>
+  <link rel="stylesheet" href="seteditor/css/seteditor.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mana-font@latest/css/mana.css">
+
+</head>
+<body>
+
+<!-- Barra superior -->
+<div id="top-toolbar">
+    <button id="btn-load">LOAD SETS</button>
+	<button id="btn-save">SAVE SET</button>
+    <span>|</span>
+
+    <span>Filters:</span>
+
+    <select id="filter-color">
+		<option value="" disabled selected>Color</option>
+		<option value="None">None</option>
+		<option value="W">W</option>
+		<option value="U">U</option>
+		<option value="B">B</option>
+		<option value="R">R</option>
+		<option value="G">G</option>
+		<option value="Gld">Gld</option>
+	</select>
+
+    <select id="filter-type">
+		<option value="" disabled selected>Type</option>
+        <option value="none">None</option>
+        <option value="Land">Land</option>
+        <option value="Nonland">Noland</option>
+        <option value="Artifact">Artifact</option>
+    </select>
+	
+    <select id="filter-collector">
+		<option value="" disabled selected>N-⇅</option>
+		<option value="None">None</option>
+        <option value="Asc">▼</option>
+        <option value="Desc">▲</option>   
+    </select>
+	
+    <select id="filter-language">
+		<option value="" disabled selected>Lang</option>
+        <option value="en">En</option>
+        <option value="es">Sp</option>   
+    </select>
+	
+	<span>|</span>
+	
+	<!-- toolbar dinámico -->
+    <div id="dynamic-toolbar" style="display:flex; gap:5px;">
+        <!-- inputs generados por JS aquí -->
+    </div>
+
+    
+</div>
+
+<!-- Layout principal -->
+<div id="main">
+
+    <!-- Columna izquierda -->
+    <div id="left-column">
+
+		 <!-- Label del template -->
+		<div id="template-label" style="font-weight:bold; margin-bottom:4px;"></div>
+
+
+        <!-- Sets -->
+        <div id="sets-panel" class="panel">
+            <h3>Sets</h3>
+            <ul id="set-list"></ul>
+        </div>
+
+        <!-- Cards -->
+        <div id="cards-panel" class="panel">
+			<h3 id="card-list-label">Cartas</h3>
+			<ul id="card-list"></ul>
+		</div>
+
+
+    </div>
+
+    <!-- Preview1 -->
+
+    <div id="preview1-panel">
+		<img id="preview1-img" src="" alt="Carta Preview">
+	</div>
+
+
+    <!-- Preview2 -->
+    <div id="preview2-panel">
+        
+    </div>
+
+
+
+
+</div>
+
+<!-- Scripts -->
+
+<script src="seteditor/templates/Oldclassic.js"></script>
+<script src="seteditor/templates/Normalclassic.js"></script>
+
+<script src="seteditor/js/scrysymbols.js"></script>
+<script src="seteditor/js/expansions.js"></script>
+<script src="seteditor/js/seteditor_main.js"></script>
+
+
+</body>
+</html>

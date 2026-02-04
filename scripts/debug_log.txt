@@ -1,0 +1,15 @@
+▶ Params:
+  Name      : Alpha Myr
+  Set       : mrd
+  Language  : es
+  Template  : RegularTemplate
+  Collector : None
+🌐 URL Scryfall: https://api.scryfall.com/cards/named?fuzzy=Alpha%20Myr&set=mrd
+📝 Nombre base Scryfall: Alpha Myr
+📦 Set detectado: mrd
+📂 Buscando base JS: C:\MTG-Photoshop-Automation\data\RegularTemplate\mrd.js
+⚠ No existe base JS.
+🔍 Buscando override para: 'alpha myr'
+❌ No se encontró override
+• Usando datos originales de Scryfall
+✔ card.json generado: C:\MTG-Photoshop-Automation\scripts\card.json
